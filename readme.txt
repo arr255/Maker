@@ -1,1 +1,3 @@
-this is a readme txt
+创客竞赛代码，所需库文件以及教程
+
+examples中提供教程，主要在第一个文件夹中
