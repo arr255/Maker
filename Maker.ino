@@ -44,7 +44,12 @@ unsigned long stTime,stopTime,loopTime;//time
 int basicTone[][2]={
   '5',NOTE_G3,'6',NOTE_A3,'7',NOTE_B3,'1',NOTE_C4,'2',NOTE_D4,'3',NOTE_E4,'4',
   NOTE_F4,'5',NOTE_G4,'6',NOTE_A4,'7',NOTE_B4,'1',NOTE_C5,'2',NOTE_D5};
-void setHomeButton();
+void setHomeButton(String );
+int color2048[]={tft.color565(49,63,77),tft.color565(17,27,37),tft.color565(19,31,55),tft.color565(13,78,134),
+                 tft.color565(10,106,156),tft.color565(10,131,160),tft.color565(9,162,196),tft.color565(18,49,142),
+                 tft.color565(18,51,158),tft.color565(19,55,175),tft.color565(18,58,192),tft.color565(17,61,209)};
+int att2048[16]={0};//每个块的值大小
+int mDirect;//移动方向
 class Piano
 {
   private:
@@ -87,7 +92,7 @@ class Piano
           for(int i=8;i<12;i++){
               setKey(65*(i-8),240,50,70,BLACK,GREEN,basicTone[i][1],basicTone[i][0]);
           }
-          setHomeButton();
+          setHomeButton("Piano");
           buttonAlready=1;
      }
 };
@@ -268,7 +273,7 @@ class Calculator{
         for(int i=0;i<5;i++){
           cal.setKey(180,80+48*i,60,48,tft.color565(0,96,133),tft.color565(211,211,211),keys[4*i+3]);
         }
-        setHomeButton();
+        setHomeButton("Caculator");
         buttonAlready=1;
   }
 };
@@ -296,6 +301,10 @@ class Home
         homeButton=3;
         buttonAlready=0;
       }
+      if(t.x>160 && t.x<240  && t.y>0 && t.y<80){
+        homeButton=4;
+        buttonAlready=0;
+      }
       return homeButton;
   }
   void setTile(int x,int y,String s)
@@ -317,6 +326,15 @@ class Home
     hm.setTile(0,0,"piano");
     hm.setTile(1,0,"Math");
     hm.setTile(2,0,"Time");
+    hm.setTile(0,1,"2048");
+    homeScreen=0;
+    funAlready=0;
+    homeButton=0;
+    buttonAlready=0;
+    h=0;s=0;m=0;start=0;
+    for(int i=0;i<16;i++){
+       att2048[i]=0;
+         }
   }
 };
 class Time{
@@ -340,7 +358,7 @@ class Time{
     startTime();
     setButton();
     setTime();
-    setHomeButton();
+    setHomeButton("Time");
     buttonAlready=1;
   }
   void startTime(){
@@ -404,7 +422,177 @@ class Time{
      }
   }
 };
-void setHomeButton()
+class Game2048{
+  public:
+     bool fail;
+     int hmKey;
+     Game2048(){
+      hmKey=0;
+     }
+     void setTile(int x,int y,int color,int number)
+    {
+        tft.setTextSize(2);
+        tft.setTextColor(BLACK);
+        tft.setCursor(60*x+20,60*y+110);
+        tft.fillRect(60*x,60*y+80,59,59,color);
+        tft.print(number);
+        att2048[4*x+y]=number;
+        }
+      void newTile(){
+        int tSeq;//初始化的块序列号
+        int f=0;
+        while(f==0){
+          tSeq=random(16);
+          if(att2048[tSeq]==0){
+              int row=tSeq/4;//行
+              int col=tSeq%4;//列
+              int number=(random(2)>0.8? 2 :4);//数值大小
+              int nSeq=log(number)/log(2);//数值排序，以便于利用颜色
+              setTile(row,col,color2048[nSeq-1],number);//设置块
+              att2048[tSeq]=number;
+              f=1;
+          }
+          }
+      }
+      int getDirections(){
+        TSPoint t=ts.getPoint();
+        pinMode(XM, OUTPUT);
+        pinMode(YP, OUTPUT);     
+        t.x=map(t.x,230,TS_MAXX,0,320);
+        t.y=map(t.y,150,TS_MAXY,0,240);
+        if(t.x>80 && t.x<140 && t.y >60 && t.y< 180)
+            return 0;//top
+        if(t.x>140 && t.x<260 && t.y >180 && t.y< 240)
+            return 1;//right
+        if(t.x>260 && t.x<320 && t.y >60 && t.y< 180)
+            return 2;//bottom
+        if(t.x>140 && t.x<260 && t.y >0 && t.y< 60)
+            return 3;//left
+        if(t.x>0 && t.x<80  && t.y>160 && t.y<240 &&t.z>0)
+        {
+               hmKey=1;
+               return -2;
+          }
+            return -1;
+      }
+      void merge(int preTile,int currTile){
+            int preRow=preTile/4;
+            int preCol=preTile%4;
+            int currRow=currTile/4;
+            int currCol=currTile%4;
+            int currColor=log(att2048[currTile])/log(2);
+            int preColor=log(att2048[preTile])/log(2);
+            if(att2048[currTile]!=0){
+              if(att2048[preTile]==0){
+                att2048[preTile]=att2048[currTile];
+                att2048[currTile]=0;
+                setTile(preRow,preCol,color2048[currColor-1],att2048[preTile]);
+                tft.fillRect(60*currRow,60*currCol+80,59,59,tft.color565(33,71,120));
+                fail=0;
+              }
+              else if(att2048[preTile]==att2048[currTile]){
+                att2048[preTile]=att2048[preTile]*2;
+                att2048[currTile]=0;
+                setTile(preRow,preCol,color2048[currColor],att2048[preTile]);
+                tft.fillRect(60*currRow,60*currCol+80,59,59,tft.color565(33,71,120));   
+                if(att2048[preTile]==2048)
+                {
+                  tft.fillRect(0,140,240,120,WHITE);
+                  tft.drawString(60,170,"You win!",RED,WHITE,2);
+                }
+                fail=0;
+              }
+          }
+      }
+      void move2048(){
+        fail=1;
+        int direct=getDirections();
+        while(direct==-1){
+          direct=getDirections();     
+        }
+        int j;
+        switch(direct){
+          case 3:
+                for(int i=4;i<16;i++){
+                  j=i;
+                  while(j>=4){
+                    merge(j-4,j);
+                    j-=4;
+                  }
+                }
+                break;
+            case 2:
+                  for(int i=14;i>=0;i--){
+                    j=i;
+                    while(j%4!=3){
+                      merge(j+1,j);
+                      j+=1;
+                    }
+                  }
+                break;
+            case 1:
+                  for(int i=11;i>=0;i--){
+                    j=i;
+                    while(j<=11){
+                      merge(j+4,j);
+                      j+=4;
+                    }
+                  }
+                break;
+            case 0:
+                  for(int i=1;i<16;i++){
+                      j=i;
+                      while(j%4!=0){
+                        merge(j-1,j);
+                        j-=1;
+                      }
+                  }
+                 break;
+        }
+        for(int i=0;i<16;i++){
+          if(att2048[i]==0){
+            fail=0;
+          }
+        }
+        if(fail){
+              tft.fillRect(0,140,240,120,WHITE);
+              tft.drawString(60,170,"You fail!",RED,WHITE,2);
+        }
+        if(!fail){
+          newTile();
+        }
+      }
+      void defaultSet(){
+         if(funAlready==0){
+          tft.fillScreen(WHITE);
+          for(int i=0;i<16;i++){
+            int row=i/4;
+            int col=i%4;
+            tft.drawRect(60*row,60*col+80,60,60,tft.color565(130,130,130));
+            tft.fillRect(60*row,60*col+80,59,59,tft.color565(33,71,120));
+          }
+          newTile();
+          newTile();
+          funAlready=1;
+            }
+        setHomeButton("2048");
+        move2048();
+        buttonAlready=1;
+        if(hmKey){
+             Home hm;
+             homeScreen=0;
+             funAlready=0;
+             homeButton=0;
+             buttonAlready=0;
+             h=0;s=0;m=0;start=0;
+             hm.defaultSet();
+             for(int i=0;i<16;i++){
+                att2048[i]=0;
+            }
+        }
+      }
+};
+void setHomeButton(String title)
 {
   if(buttonAlready==0){
      tft.fillRect(0,0,160,80,tft.color565(165,42,42 )); 
@@ -412,7 +600,7 @@ void setHomeButton()
      buttonAlready=1;
   }
    if(homeButton!=2){
-   tft.drawString(60,40,"Maker",RED,tft.color565(165,42,42),2);
+   tft.drawString(60,40,title,RED,tft.color565(165,42,42),2);
    }
    tft.drawString(180,30,"Home",BLACK,GREEN,2);
    TSPoint t=ts.getPoint();
@@ -427,8 +615,11 @@ void setHomeButton()
          funAlready=0;
          homeButton=0;
          buttonAlready=0;
-         hm.defaultSet();
          h=0;s=0;m=0;start=0;
+         hm.defaultSet();
+         for(int i=0;i<16;i++){
+            att2048[i]=0;
+         }
     }
 }
 void setup()
@@ -466,6 +657,12 @@ void loop()
       homeScreen=1;
       Time tm;
       tm.defaultSet();
+      break;
+    }
+    case 4:{
+      homeScreen=1;
+      Game2048 game2048;
+      game2048.defaultSet();
       break;
     }
   }
