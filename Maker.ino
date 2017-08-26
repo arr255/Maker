@@ -29,7 +29,7 @@
 Adafruit_TFTLCD tft(LCD_CS,LCD_CD,LCD_WR,LCD_RD,LCD_RESET);
 TouchScreen ts=TouchScreen(XP,YP,XM,YM,300);
 TSPoint t;
-int tonePin=A5;
+int tonePin=10;
 int homeButton=0;//home界面按钮选择
 static bool funAlready=0;//选择界面
 int homeScreen=0;//主界面
@@ -44,12 +44,22 @@ unsigned long stTime,stopTime,loopTime;//time
 int basicTone[][2]={
   '5',NOTE_G3,'6',NOTE_A3,'7',NOTE_B3,'1',NOTE_C4,'2',NOTE_D4,'3',NOTE_E4,'4',
   NOTE_F4,'5',NOTE_G4,'6',NOTE_A4,'7',NOTE_B4,'1',NOTE_C5,'2',NOTE_D5};
+int toneTable[][2]={-5,NOTE_G3,-6,NOTE_A3,-7,NOTE_B3,0,0,1,NOTE_C4,2,NOTE_D4,3,NOTE_E4,4,NOTE_F4,
+                   5,NOTE_G4,6,NOTE_A4,7,NOTE_B4,11,NOTE_C5,12,NOTE_D5,13,NOTE_E5,14,NOTE_F5,
+                   15,NOTE_G5,16,NOTE_A5,17,NOTE_B5};
 void setHomeButton(String );
 int color2048[]={tft.color565(49,63,77),tft.color565(17,27,37),tft.color565(19,31,55),tft.color565(13,78,134),
                  tft.color565(10,106,156),tft.color565(10,131,160),tft.color565(9,162,196),tft.color565(18,49,142),
                  tft.color565(18,51,158),tft.color565(19,55,175),tft.color565(18,58,192),tft.color565(17,61,209)};
 int att2048[16]={0};//每个块的值大小
 int mDirect;//移动方向
+int toneLength;
+String musicName[10];
+int startMusic=-1;
+int musicNumber=4;
+int simpleTone[65];
+int changedTone[65];
+int noteDurations[65];
 class Piano
 {
   private:
@@ -305,6 +315,10 @@ class Home
         homeButton=4;
         buttonAlready=0;
       }
+      if(t.x>160 && t.x<240 && t.y>80&&t.y<160){
+        homeButton=5;
+        buttonAlready=0;
+      }
       return homeButton;
   }
   void setTile(int x,int y,String s)
@@ -327,6 +341,7 @@ class Home
     hm.setTile(1,0,"Math");
     hm.setTile(2,0,"Time");
     hm.setTile(0,1,"2048");
+    hm.setTile(1,1,"Music");
     homeScreen=0;
     funAlready=0;
     homeButton=0;
@@ -335,6 +350,7 @@ class Home
     for(int i=0;i<16;i++){
        att2048[i]=0;
          }
+    startMusic=-1;
   }
 };
 class Time{
@@ -590,7 +606,161 @@ class Game2048{
                 att2048[i]=0;
             }
         }
+        
       }
+};
+class Music{
+  public:
+
+    void setKey(int y)
+    {
+      TSPoint t=ts.getPoint();
+      pinMode(XM, OUTPUT);
+      pinMode(YP, OUTPUT);     
+      t.x=map(t.x,230,TS_MAXX,0,320);
+      t.y=map(t.y,150,TS_MAXY,0,240);
+      tft.setCursor(20,110+60*y);
+      tft.setTextSize(2);
+      if(t.x>60*y+80 && t.x<60*y+140){
+        tft.fillRect(0,60*y+80,240,60,GREEN);
+        tft.setCursor(20,110+60*y);
+        tft.print(y+1);
+        tft.print(".");
+        tft.print(musicName[y]);
+        startMusic=y;
+        }
+      else if(buttonAlready==0){
+        tft.fillRect(0,60*y+80,240,60,tft.color565(120,32,12));
+        tft.setCursor(20,110+60*y);  
+        tft.print(y+1);
+        tft.print(".");
+        tft.print(musicName[y]);
+     }
+    }
+   void setTile(){
+        tft.fillRect(0,60*startMusic+80,240,60,tft.color565(120,32,12));
+        tft.setCursor(20,110+60*startMusic);  
+        tft.print(startMusic+1);
+        tft.print(".");
+        tft.print(musicName[startMusic]);
+     }
+    void getSrc(int i){
+          if(i==0){
+            toneLength=29;
+            int noteDurationsSrc[]={
+              8,8,4,4,4,4,4,
+              8,8,4,4,4,4,4,
+              8,8,4,4,4,4,2,8,
+              8,8,4,4,4,2,4
+              };
+            int simpleToneSrc[]={
+              -5,-5,-6,-5,1,-7,0,
+              -5,-5,-6,-5,2,1,0,
+              -5,-5,5,3,1,-7,-6,0,
+              4,4,3,1,2,1,0
+            };
+            for(int i=0;i<toneLength;i++){
+                simpleTone[i]=simpleToneSrc[i];
+                noteDurations[i]=noteDurationsSrc[i];
+               }
+            toneChange(simpleTone);
+          }
+          if(i==1){
+            int simpleToneSrc[]={1,1,5,5,6,6,5,
+                                 4,4,3,3,2,2,1,
+                                 5,5,4,4,3,3,2,
+                                 5,5,4,4,3,3,2
+                                 };
+               int noteDurationsSrc[]={4,4,4,4,4,4,2,
+                                       4,4,4,4,4,4,2,
+                                       4,4,4,4,4,4,2,
+                                       4,4,4,4,4,4,2
+               };
+               toneLength=28;
+              for(int i=0;i<toneLength;i++){
+                  simpleTone[i]=simpleToneSrc[i];
+                  noteDurations[i]=noteDurationsSrc[i];
+               }
+              toneChange(simpleTone);
+           }
+           if(i==2){
+            int simpleToneSrc[]={3,3,4,5,5,4,3,2,1,1,2,3,3,2,2,
+                                 3,3,4,5,5,4,3,2,1,1,2,3,2,1,1,
+                                 2,2,3,2,2,3,4,3,1,2,3,4,3,2,1,2,-5,
+                                 3,3,3,4,5,5,4,3,4,2,1,1,2,3,2,1,1
+                                 
+                                 };
+               int noteDurationsSrc[]={4,4,4,4,4,4,4,4,4,4,4,4,3,8,2,
+                                       4,4,4,4,4,4,4,4,4,4,4,4,3,8,2,
+                                       4,4,4,4,4,8,8,4,4,4,8,8,4,4,4,4,4,
+                                       4,4,4,4,4,4,4,4,8,8,4,4,4,4,3,8,2
+               };
+               toneLength=64;
+              for(int i=0;i<toneLength;i++){
+                  simpleTone[i]=simpleToneSrc[i];
+                  noteDurations[i]=noteDurationsSrc[i];
+               }
+              toneChange(simpleTone);
+           }
+         if(i==3){
+            int simpleToneSrc[]={
+                                 3,3,3,3,3,3,3,5,1,2,3,0,
+                                 4,4,4,4,4,3,3,3,3,3,2,2,1,2,5
+                                 };
+               int noteDurationsSrc[]={
+                                  8,8,4,8,8,4,8,8,6,16,3,8,
+                                  8,8,6,16,8,8,8,16,16,8,8,8,8,4,4
+               };
+               toneLength=27;
+              for(int i=0;i<toneLength;i++){
+                  simpleTone[i]=simpleToneSrc[i];
+                  noteDurations[i]=noteDurationsSrc[i];
+               }
+              toneChange(simpleTone);
+           }
+    }
+    void toneChange(int arr[]){
+      for(int i=0;i<toneLength;i++){
+        for(int j=0;j<19;j++){
+          if(arr[i]==toneTable[j][0]){
+             changedTone[i]=toneTable[j][1];
+             break;
+          }
+        }
+      }
+    }
+    void playMusic(){
+        for(int i=0;i<toneLength;i++) {
+            int noteDuration=1000/noteDurations[i];
+            tone(tonePin,changedTone[i],2*noteDuration);
+            int pause=noteDuration*1.3;
+            delay(pause);
+            noTone(10);
+            Serial.println(changedTone[i]);
+          }
+          setTile();
+          startMusic=-1;
+    }
+    void defaultSet(){
+       if(funAlready==0){
+        tft.fillScreen(WHITE);
+        funAlready=1;
+        musicName[0]="birthday";
+        musicName[1]="Little Star";
+        musicName[2]="Happy Song";
+        musicName[3]="Jingle Bell";
+          }
+      for(int i=0;i<musicNumber;i++){
+        setKey(i);
+        tft.drawRect(0,80+60*i,240,60,BLACK);
+      }
+      if(startMusic!=-1){
+       getSrc(startMusic);
+       playMusic();
+      }
+      setHomeButton("Music");
+      buttonAlready=1; 
+    }
 };
 void setHomeButton(String title)
 {
@@ -632,6 +802,13 @@ void setup()
   tft.fillScreen(0x0000);
   Home hm;
   hm.defaultSet();
+  for(int i=0;i<14;i++)
+  {
+    Serial.print(toneTable[i][0]);
+    Serial.print("  :   ");
+    Serial.print(toneTable[i][1]);
+    Serial.print("\n");
+  }
 }
 void loop()
 {
@@ -665,91 +842,11 @@ void loop()
       game2048.defaultSet();
       break;
     }
+    case 5:{
+      homeScreen=1;
+      Music music;
+      music.defaultSet();
+      break;
+    }
   }
 }
-
-int melody[]={NOTE_G4,//5  
-NOTE_G4,//5
-NOTE_A4,//6
-NOTE_G4,//5
-NOTE_C5,//1.
-NOTE_B4,//7
-0,
-NOTE_G4,//5
-NOTE_G4,//5
-NOTE_A4,//6
-NOTE_G4,//5
-NOTE_D5,//2.
-NOTE_C5,//1.
-0,
-NOTE_G4,//5
-NOTE_G4,//5
-NOTE_G5,//5.
-NOTE_E5,//3.
-NOTE_C5,//1.
-NOTE_B4,//7
-NOTE_A4,//6
-0,
-NOTE_F5,//4.
-NOTE_F5,//4.
-NOTE_E5,//3.
-NOTE_C5,//1.
-NOTE_D5,//2.
-NOTE_C5,//1.
-0,};
-int noteDurations[]={8,8,4,4,4,4,
-  4,
-  8,8,4,4,4,4,
-  4,
-  8,8,4,4,4,4,2,
-  8,
-  8,8,4,4,4,2,
-  4,};
-  int country[]={
-    0,
-    NOTE_G3,
-    NOTE_C4,
-    NOTE_C4,
-    NOTE_C4,
-    NOTE_C4,
-    NOTE_G3,
-    NOTE_A3,
-    NOTE_B3,
-    NOTE_C4,
-    NOTE_C4,
-    0,
-    NOTE_E4,
-    NOTE_C4,
-    NOTE_D4,
-    NOTE_E4,
-    NOTE_G4,
-    NOTE_G4,
-    NOTE_E4,NOTE_E4,NOTE_C4,NOTE_E4,NOTE_G4,
-    NOTE_E4,NOTE_D4,NOTE_D4
-  };
-  int tCountry[]={
-    8,8,3,8,6,16,8,16,16,4,4,8,8,8,16,16,4,4,
-    6,16,6,16,6,16,4,2
-  };
-void countryDisplay()
-{
-  for(int i=0;i<26;i++)
-  {
-    int noteDuration=1000/tCountry[i];
-    tone(tonePin,country[i],8*noteDuration);
-    int pause=noteDuration*1.3;
-    delay(pause);
-    noTone(10);
-  }
-}
-void birthdayDisplay(){
-  for(int i=0;i<28;i++) {
-  int noteDuration=1000/noteDurations[i];
-  tone(tonePin,melody[i],2*noteDuration);
-  int pause=noteDuration*1.3;
-  delay(pause);
-  noTone(10);
- }
-}
-
-
